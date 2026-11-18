@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sazib TV - Customer Portal & Live Player</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    /* Customer Portal Specific Styles */
+    body.customer-portal {
+      display: block;
+      background: #090d16;
+      color: #f1f5f9;
+      min-height: 100vh;
+    }
+    .cp-navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .cp-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cp-brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+    }
+    .cp-brand-text {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: 1px;
+    }
+    .cp-user-pill {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: #1e293b;
+      padding: 6px 14px;
+      border-radius: 30px;
+      border: 1px solid #334155;
+    }
+    .cp-main {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 28px 20px;
+    }
+    /* Login Box */
+    .login-container {
+      min-height: 80vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .login-box {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: min(440px, 100%);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .login-box h2 {
+      color: #fff;
+      font-size: 22px;
+      margin: 12px 0 6px;
+    }
+    .login-box p {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    .login-form {
+      text-align: left;
+      display: grid;
+      gap: 16px;
+    }
+    .login-form label {
+      font-size: 13px;
+      color: #cbd5e1;
+      font-weight: 600;
+      display: block;
+    }
+    .login-form input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+      margin-top: 6px;
+    }
+    .login-form input:focus {
+      border-color: var(--primary);
+    }
+    .demo-accounts {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #1e293b;
+      font-size: 12px;
+      color: #64748b;
+      text-align: left;
+    }
+    .demo-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #93c5fd;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      margin-top: 6px;
+      display: inline-block;
+    }
+    .demo-btn:hover {
+      background: #2563eb;
+      color: #fff;
+    }
+    /* Streaming Dashboard */
+    .stream-layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-top: 20px;
+    }
+    .player-section {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .now-playing-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .now-playing-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .channels-section {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 20px;
+      max-height: 700px;
+      display: flex;
+      flex-direction: column;
+    }
+    .cp-cat-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .cp-cat-tab {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .cp-cat-tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .cp-channel-list {
+      overflow-y: auto;
+      display: grid;
+      gap: 8px;
+      padding-right: 4px;
+      flex: 1;
+    }
+    .cp-channel-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .cp-channel-item:hover, .cp-channel-item.active {
+      background: #252e42;
+      border-color: var(--primary);
+      transform: translateX(3px);
+    }
+    .cp-channel-item img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      background: #0f172a;
+      border-radius: 6px;
+      padding: 2px;
+    }
+    .cp-m3u-box {
+      margin-top: 24px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .expired-banner {
+      background: #7f1d1d;
+      border: 1px solid #b91c1c;
+      color: #fecaca;
+      padding: 14px 18px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    @media (max-width: 900px) {
+      .stream-layout {
+        grid-template-columns: 1fr;
+      }
+      .channels-section {
+        max-height: 500px;
+      }
+    }
+  </style>
+</head>
+<body class="customer-portal">
+
+  <!-- Navbar -->
+  <nav class="cp-navbar">
+    <div class="cp-brand">
+      <img src="logo.png" alt="Sazib TV" onerror="this.style.display='none'">
+      <div>
+        <span class="cp-brand-text">SAZIB TV</span>
+        <small style="display:block; color:var(--primary); font-size:10px; font-weight:700; letter-spacing:1px;">CUSTOMER STREAMING PORTAL</small>
+      </div>
+    </div>
+
+    <div id="cp-user-header" style="display:none;" class="cp-user-pill">
+      <div>
+        <strong id="cp-user-name" style="color:#fff; font-size:14px;">User</strong>
+        <span id="cp-user-plan" class="badge" style="background:#2563eb; color:#fff; margin-left:6px;">VIP</span>
+      </div>
+      <button class="btn btn-outline" style="padding:4px 10px; font-size:12px; background:#334155; color:#fff; border:none;" onclick="customerLogout()">Logout</button>
+    </div>
+  </nav>
+
+  <!-- Login View -->
+  <div id="cp-login-view" class="login-container">
+    <div class="login-box">
+      <img src="logo.png" alt="Sazib TV" style="width:54px; height:54px; border-radius:12px; margin-bottom:10px;" onerror="this.style.display='none'">
+      <h2>Customer Login</h2>
+      <p>Enter your phone number and activation code to access live TV channels.</p>
+
+      <form id="cp-login-form" class="login-form">
+        <label>
+          Phone Number or Email
+          <input id="login-identifier" required placeholder="e.g. 01711223344">
+        </label>
+
+        <label>
+          Activation Code
+          <input id="login-code" required placeholder="e.g. SZB-8821" style="text-transform:uppercase;">
+        </label>
+
+        <button type="submit" class="primary" style="width:100%; justify-content:center; padding:12px; font-size:15px; margin-top:6px;">
+          Log In & Watch TV
+        </button>
+      </form>
+
+      <!-- Quick Demo Credentials for Fast Testing -->
+      <div class="demo-accounts">
+        <strong style="color:#94a3b8;">Quick Demo Accounts:</strong><br>
+        <button class="demo-btn" onclick="fillDemo('01711223344', 'SZB-8821')">VIP: 01711223344 (SZB-8821)</button>
+        <button class="demo-btn" onclick="fillDemo('01812345678', 'SZB-4412')">Premium: 01812345678 (SZB-4412)</button>
+        <button class="demo-btn" onclick="fillDemo('01998765432', 'SZB-1190')">Expired: 01998765432 (SZB-1190)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customer Streaming View -->
+  <div id="cp-app-view" class="cp-main" style="display:none;">
+    
+    <!-- Status / Expiration Alert if Expired -->
+    <div id="cp-expired-alert" class="expired-banner" style="display:none;">
+      <span style="font-size:22px;">⚠️</span>
+      <div>
+        <strong>Subscription Expired:</strong> Your account access ended on <span id="cp-expired-date"></span>. Live channels are paused. Please contact Sazib TV Admin to renew your subscription.
+      </div>
+    </div>
+
+    <!-- Active Subscription Status Banner -->
+    <div id="cp-active-banner" style="background:#132034; border:1px solid #1e3a5f; padding:14px 20px; border-radius:12px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div>
+        <span style="color:#60a5fa; font-weight:600; font-size:13px;">ACTIVE SUBSCRIPTION:</span>
+        <strong id="cp-banner-plan" style="color:#fff; margin-left:6px; font-size:15px;">VIP Plan</strong>
+        <span style="color:#94a3b8; font-size:13px; margin-left:10px;">• Valid until: <span id="cp-banner-expiry" style="color:#34d399; font-weight:600;">2027-11-18</span></span>
+      </div>
+      <div>
+        <span id="cp-channel-count-tag" class="badge" style="background:#1e293b; color:#93c5fd; padding:6px 12px; border-radius:20px;">153 Channels Available</span>
+      </div>
+    </div>
+
+    <!-- Live Stream Player & Channel List -->
+    <div class="stream-layout">
+      <!-- Player Column -->
+      <div class="player-section">
+        <div class="now-playing-header">
+          <div>
+            <div class="now-playing-title" id="now-title">Somoy TV</div>
+            <small id="now-category" style="color:#94a3b8; font-size:12px;">Bangladesh • Live Stream</small>
+          </div>
+          <span class="status" style="background:#064e3b; color:#34d399;">● LIVE</span>
+        </div>
+
+        <div class="video-container" style="margin:0; border:1px solid #334155;">
+          <video id="cpVideoPlayer" controls playsinline></video>
+          <div id="cpPlayerStatus" class="player-overlay">
+            <div class="spinner"></div>
+            <span id="cpStatusText">Click any channel on the right to start watching...</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; font-size:13px; color:#94a3b8;">
+          <span>Player: HLS / Adaptive Bitrate</span>
+          <a href="https://sazib-tv.vercel.app/" target="_blank" style="color:#60a5fa; text-decoration:none;">Open in TV Mode ↗</a>
+        </div>
+      </div>
+
+      <!-- Channel Sidebar Column -->
+      <div class="channels-section">
+        <div style="margin-bottom:12px;">
+          <input id="cp-search" placeholder="Search channel name..." oninput="filterCustomerChannels()" style="width:100%; padding:10px 14px; background:#1e293b; border:1px solid #334155; border-radius:8px; color:#fff; font-size:14px; outline:none;">
+        </div>
+
+        <div id="cp-cat-tabs" class="cp-cat-tabs">
+          <!-- Populated by JS -->
+        </div>
+
+        <div id="cp-channel-list" class="cp-channel-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- IPTV / M3U Playlist Box -->
+    <div class="cp-m3u-box">
+      <div>
+        <h3 style="margin:0 0 4px; font-size:16px; color:#fff;">📺 Watch on Smart TV / IPTV Apps (TiviMate, Smarters, VLC)</h3>
+        <p style="margin:0; color:#94a3b8; font-size:13px;">Use your private M3U Playlist link in any IPTV app on Android TV, FireStick, Apple TV, or mobile.</p>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; flex:1; max-width:550px;">
+        <input id="cp-m3u-url" readonly onclick="this.select()" style="flex:1; padding:10px 12px; background:#1e293b; border:1px solid #334155; border-radius:8px; color:#93c5fd; font-family:monospace; font-size:13px; outline:none;">
+        <button class="primary" onclick="copyM3uUrl()" style="white-space:nowrap; padding:10px 16px;">Copy M3U</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script>
+    let currentCustomer = null;
+    let customerChannels = [];
+    let displayedChannels = [];
+    let activeCategory = 'all';
+    let hls = null;
+
+    const $ = id => document.getElementById(id);
+
+    function showToast(msg, type = 'info') {
+      const container = $('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `<span>${type === 'success' ? '✅' : 'ℹ️'}</span> <span>${msg}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    function fillDemo(ident, code) {
+      $('login-identifier').value = ident;
+      $('login-code').value = code;
+      showToast(`Logging in as ${ident}...`, 'info');
+      $('cp-login-form').requestSubmit();
+    }
+
+    $('cp-login-form').onsubmit = async e => {
+      e.preventDefault();
+      const identifier = $('login-identifier').value.trim();
+      const code = $('login-code').value.trim();
+
+      try {
+        const res = await fetch('/api/customer/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, code })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || 'Login failed', 'error');
+          return;
+        }
+
+        currentCustomer = data.customer;
+        localStorage.setItem('sazibtv_customer_session', JSON.stringify(currentCustomer));
+        loadCustomerApp();
+      } catch (err) {
+        showToast('Error contacting server: ' + err.message, 'error');
+      }
+    };
+
+    function customerLogout() {
+      localStorage.removeItem('sazibtv_customer_session');
+      currentCustomer = null;
+      if (hls) hls.destroy();
+      $('cp-user-header').style.display = 'none';
+      $('cp-app-view').style.display = 'none';
+      $('cp-login-view').style.display = 'grid';
+    }
+
+    async function loadCustomerApp() {
+      $('cp-login-view').style.display = 'none';
+      $('cp-app-view').style.display = 'block';
+      $('cp-user-header').style.display = 'flex';
+
+      $('cp-user-name').textContent = currentCustomer.name;
+      $('cp-user-plan').textContent = currentCustomer.plan;
+      $('cp-banner-plan').textContent = currentCustomer.plan + ' Subscription';
+      $('cp-banner-expiry').textContent = currentCustomer.expiresAt || 'Lifetime';
+
+      // Set M3U Playlist URL
+      const origin = window.location.origin;
+      $('cp-m3u-url').value = `${origin}/playlist.m3u?token=${currentCustomer.token}`;
+
+      // Check Expiration
+      const today = new Date().toISOString().split('T')[0];
+      const isExpired = currentCustomer.expiresAt && currentCustomer.expiresAt < today;
+
+      if (isExpired || currentCustomer.status === 'expired' || currentCustomer.status === 'blocked') {
+        $('cp-expired-alert').style.display = 'flex';
+        $('cp-expired-date').textContent = currentCustomer.expiresAt;
+        $('cp-active-banner').style.display = 'none';
+        $('cpStatusText').textContent = 'Subscription expired. Streaming locked.';
+        return;
+      } else {
+        $('cp-expired-alert').style.display = 'none';
+        $('cp-active-banner').style.display = 'flex';
+      }
+
+      // Fetch Customer Channels
+      try {
+        const res = await fetch(`/api/customer/channels?token=${currentCustomer.token}`);
+        const data = await res.json();
+        if (res.ok && data.channels) {
+          customerChannels = data.channels;
+          $('cp-channel-count-tag').textContent = `${customerChannels.length} Channels Available`;
+          buildCategoryTabs();
+          filterCustomerChannels();
+
+          // Auto-play first channel
+          if (customerChannels.length > 0) {
+            playChannel(customerChannels[0]);
+          }
+        }
+      } catch (err) {
+        showToast('Error loading channels', 'error');
+      }
+    }
+
+    function buildCategoryTabs() {
+      const cats = ['all', ...new Set(customerChannels.map(c => c.category || c.group || 'General'))];
+      const tabsContainer = $('cp-cat-tabs');
+      tabsContainer.innerHTML = cats.map(c => `
+        <button class="cp-cat-tab ${c === activeCategory ? 'active' : ''}" onclick="selectCategory('${c}')">
+          ${c === 'all' ? 'All Channels' : c}
+        </button>
+      `).join('');
+    }
+
+    function selectCategory(cat) {
+      activeCategory = cat;
+      buildCategoryTabs();
+      filterCustomerChannels();
+    }
+
+    function filterCustomerChannels() {
+      const q = $('cp-search').value.trim().toLowerCase();
+      displayedChannels = customerChannels.filter(c => {
+        const nameMatch = c.name.toLowerCase().includes(q);
+        const cat = c.category || c.group || 'General';
+        const catMatch = activeCategory === 'all' || cat === activeCategory;
+        return nameMatch && catMatch;
+      });
+
+      const listContainer = $('cp-channel-list');
+      if (displayedChannels.length === 0) {
+        listContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">No channels found</div>';
+        return;
+      }
+
+      listContainer.innerHTML = displayedChannels.map(c => `
+        <div class="cp-channel-item" onclick='playChannel(${JSON.stringify(c)})'>
+          ${c.logo ? `<img src="${c.logo}" onerror="this.style.display='none'">` : '<div class="placeholder">▶</div>'}
+          <div style="flex:1;">
+            <strong style="display:block; font-size:14px; color:#fff;">${c.name}</strong>
+            <small style="color:#94a3b8; font-size:11px;">${c.category || c.group}</small>
+          </div>
+          <span style="color:#60a5fa; font-size:12px;">▶ Watch</span>
+        </div>
+      `).join('');
+    }
+
+    function playChannel(c) {
+      $('now-title').textContent = c.name;
+      $('now-category').textContent = `${c.category || c.group} • Live Stream`;
+
+      const video = $('cpVideoPlayer');
+      const overlay = $('cpPlayerStatus');
+      const statusText = $('cpStatusText');
+
+      overlay.style.display = 'flex';
+      statusText.textContent = `Connecting to ${c.name}...`;
+
+      if (hls) {
+        hls.destroy();
+        hls = null;
+      }
+
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+
+      if (window.Hls && Hls.isSupported()) {
+        hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+        hls.loadSource(c.url);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          overlay.style.display = 'none';
+          video.play().catch(() => {
+            statusText.textContent = 'Click play to start video';
+          });
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            statusText.textContent = 'Stream unavailable or blocked by CORS headers.';
+            overlay.style.display = 'flex';
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = c.url;
+        video.addEventListener('loadedmetadata', () => {
+          overlay.style.display = 'none';
+          video.play();
+        });
+      }
+    }
+
+    function copyM3uUrl() {
+      const input = $('cp-m3u-url');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        showToast('M3U Playlist URL copied to clipboard!', 'success');
+      });
+    }
+
+    // Auto-login if session exists
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('sazibtv_customer_session');
+      if (saved) {
+        try {
+          currentCustomer = JSON.parse(saved);
+          loadCustomerApp();
+        } catch (e) {
+          localStorage.removeItem('sazibtv_customer_session');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
