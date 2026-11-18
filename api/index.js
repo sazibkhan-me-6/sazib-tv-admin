@@ -1,16 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 
-// On Vercel, root repo is read-only, /tmp is writable
+// Safe bundled fallback using require so Vercel bundler embeds them
+let bundledChannels = [];
+try {
+  bundledChannels = require('../defaultChannels.json');
+} catch (e) {
+  try {
+    bundledChannels = require('../channels.json');
+  } catch (e2) {}
+}
+
+let bundledCustomers = [];
+try {
+  bundledCustomers = require('../customers.json');
+} catch (e) {}
+
+// On Vercel, /tmp is writable
 const ROOT_DIR = path.resolve(__dirname, '..');
 const TMP_DIR = process.env.VERCEL ? '/tmp' : ROOT_DIR;
-
 const CHANNELS_FILE = path.join(TMP_DIR, 'channels.json');
-const DEFAULT_CHANNELS_FILE = path.join(ROOT_DIR, 'defaultChannels.json');
-const BUNDLED_CHANNELS_FILE = path.join(ROOT_DIR, 'channels.json');
-
 const CUSTOMERS_FILE = path.join(TMP_DIR, 'customers.json');
-const BUNDLED_CUSTOMERS_FILE = path.join(ROOT_DIR, 'customers.json');
 
 function readChannels() {
   if (fs.existsSync(CHANNELS_FILE)) {
@@ -19,37 +29,22 @@ function readChannels() {
       if (Array.isArray(data) && data.length > 0) return data;
     } catch (e) {}
   }
-  if (fs.existsSync(BUNDLED_CHANNELS_FILE)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(BUNDLED_CHANNELS_FILE, 'utf8'));
-      if (Array.isArray(data) && data.length > 0) return data;
-    } catch (e) {}
-  }
-  if (fs.existsSync(DEFAULT_CHANNELS_FILE)) {
-    try {
-      const raw = fs.readFileSync(DEFAULT_CHANNELS_FILE, 'utf8');
-      const data = JSON.parse(raw);
-      return data.map((c, idx) => ({
-        id: c.id || `ch-${idx}`,
-        name: c.name || 'Unnamed Channel',
-        url: c.url || '',
-        category: c.group || c.category || 'General',
-        group: c.group || c.category || 'General',
-        logo: c.logo || '',
-        webUrl: c.webUrl || '',
-        active: c.active !== undefined ? c.active : true
-      }));
-    } catch (e) {}
-  }
-  return [];
+  return bundledChannels.map((c, idx) => ({
+    id: c.id || `ch-${idx}`,
+    name: c.name || 'Unnamed Channel',
+    url: c.url || '',
+    category: c.group || c.category || 'General',
+    group: c.group || c.category || 'General',
+    logo: c.logo || '',
+    webUrl: c.webUrl || '',
+    active: c.active !== undefined ? c.active : true
+  }));
 }
 
 function writeChannels(data) {
   try {
     fs.writeFileSync(CHANNELS_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (e) {
-    console.warn('Could not write channels.json:', e.message);
-  }
+  } catch (e) {}
 }
 
 function readCustomers() {
@@ -59,21 +54,13 @@ function readCustomers() {
       if (Array.isArray(data)) return data;
     } catch (e) {}
   }
-  if (fs.existsSync(BUNDLED_CUSTOMERS_FILE)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(BUNDLED_CUSTOMERS_FILE, 'utf8'));
-      if (Array.isArray(data)) return data;
-    } catch (e) {}
-  }
-  return [];
+  return bundledCustomers;
 }
 
 function writeCustomers(data) {
   try {
     fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (e) {
-    console.warn('Could not write customers.json:', e.message);
-  }
+  } catch (e) {}
 }
 
 function parseJsonBody(req) {
@@ -107,14 +94,14 @@ module.exports = async (req, res) => {
   }
 
   // 1. Get All Customers
-  if (pathname === '/api/customers' && req.method === 'GET') {
+  if (pathname.includes('/api/customers') && req.method === 'GET') {
     const customers = readCustomers();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     return res.end(JSON.stringify(customers));
   }
 
   // 2. Add / Update Customer
-  if (pathname === '/api/customers' && req.method === 'POST') {
+  if (pathname.includes('/api/customers') && req.method === 'POST') {
     const body = await parseJsonBody(req);
     const customers = readCustomers();
 
@@ -157,7 +144,7 @@ module.exports = async (req, res) => {
   }
 
   // 3. Toggle Customer Status
-  if (pathname === '/api/customers/toggle-status' && req.method === 'POST') {
+  if (pathname.includes('/api/customers/toggle-status') && req.method === 'POST') {
     const { id } = await parseJsonBody(req);
     const customers = readCustomers();
     const c = customers.find(x => x.id === id);
@@ -172,7 +159,7 @@ module.exports = async (req, res) => {
   }
 
   // 4. Renew Customer
-  if (pathname === '/api/customers/renew' && req.method === 'POST') {
+  if (pathname.includes('/api/customers/renew') && req.method === 'POST') {
     const { id, days } = await parseJsonBody(req);
     const customers = readCustomers();
     const c = customers.find(x => x.id === id);
@@ -196,7 +183,7 @@ module.exports = async (req, res) => {
   }
 
   // 5. Delete Customer
-  if (pathname === '/api/customers/delete' && req.method === 'POST') {
+  if (pathname.includes('/api/customers/delete') && req.method === 'POST') {
     const { id } = await parseJsonBody(req);
     let customers = readCustomers();
     customers = customers.filter(c => c.id !== id);
@@ -206,7 +193,7 @@ module.exports = async (req, res) => {
   }
 
   // 6. Customer Login
-  if (pathname === '/api/customer/login' && req.method === 'POST') {
+  if (pathname.includes('/api/customer/login') && req.method === 'POST') {
     const { identifier, code } = await parseJsonBody(req);
     const cleanIdent = (identifier || '').trim().toLowerCase();
     const cleanCode = (code || '').trim().toUpperCase();
@@ -254,7 +241,7 @@ module.exports = async (req, res) => {
   }
 
   // 7. Customer Channels
-  if (pathname === '/api/customer/channels' && req.method === 'GET') {
+  if (pathname.includes('/api/customer/channels') && req.method === 'GET') {
     const token = reqUrl.searchParams.get('token');
     const customers = readCustomers();
     const customer = customers.find(c => c.token === token);
@@ -287,7 +274,7 @@ module.exports = async (req, res) => {
   }
 
   // 8. Dynamic M3U Playlist
-  if ((pathname === '/playlist.m3u' || pathname === '/api/playlist.m3u') && req.method === 'GET') {
+  if ((pathname.includes('/playlist.m3u') || pathname.includes('/api/playlist.m3u')) && req.method === 'GET') {
     const token = reqUrl.searchParams.get('token');
     const customers = readCustomers();
     const customer = customers.find(c => c.token === token);
@@ -321,13 +308,13 @@ module.exports = async (req, res) => {
   }
 
   // 9. Channels API
-  if (pathname === '/api/channels' && req.method === 'GET') {
+  if (pathname.includes('/api/channels') && req.method === 'GET') {
     const channels = readChannels();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     return res.end(JSON.stringify(channels));
   }
 
-  if (pathname === '/api/channels' && req.method === 'POST') {
+  if (pathname.includes('/api/channels') && req.method === 'POST') {
     const channels = await parseJsonBody(req);
     if (!Array.isArray(channels)) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -338,7 +325,8 @@ module.exports = async (req, res) => {
     return res.end(JSON.stringify({ success: true, count: channels.length }));
   }
 
-  // Fallback
-  res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'API route not found' }));
+  // Default fallback to all channels
+  const channels = readChannels();
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(channels));
 };
