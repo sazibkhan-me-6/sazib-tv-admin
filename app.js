@@ -103,6 +103,9 @@ async function initApp() {
     const localChannels = loadFromLocalStorage(STORAGE_KEY);
     if (localChannels && localChannels.length > 0) {
       channels = localChannels;
+    } else if (window.INITIAL_CHANNELS && window.INITIAL_CHANNELS.length > 0) {
+      channels = window.INITIAL_CHANNELS;
+      saveToLocalStorage(STORAGE_KEY, channels);
     } else {
       try {
         const res = await fetch('defaultChannels.json');
@@ -130,6 +133,9 @@ async function initApp() {
     const localCust = loadFromLocalStorage(CUST_STORAGE_KEY);
     if (localCust && localCust.length > 0) {
       customers = localCust;
+    } else if (window.INITIAL_CUSTOMERS && window.INITIAL_CUSTOMERS.length > 0) {
+      customers = window.INITIAL_CUSTOMERS;
+      saveToLocalStorage(CUST_STORAGE_KEY, customers);
     } else {
       try {
         const res = await fetch('customers.json');

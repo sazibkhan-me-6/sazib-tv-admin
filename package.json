@@ -5,9 +5,15 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "echo Ready"
   },
-  "keywords": ["sazib-tv", "admin", "iptv", "dashboard"],
-  "author": "Sazib",
+  "keywords": [
+    "sazib-tv",
+    "admin",
+    "iptv",
+    "dashboard"
+  ],
+  "author": "sazibkhan-me-6",
   "license": "MIT"
 }

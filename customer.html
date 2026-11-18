@@ -385,6 +385,7 @@
   <!-- Toast Notification Container -->
   <div id="toast-container" class="toast-container"></div>
 
+  <script src="data.js"></script>
   <script>
     let currentCustomer = null;
     let customerChannels = [];
@@ -421,19 +422,32 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identifier, code })
         });
-        const data = await res.json();
-
-        if (!res.ok) {
-          showToast(data.error || 'Login failed', 'error');
+        if (res.ok) {
+          const data = await res.json();
+          currentCustomer = data.customer;
+          localStorage.setItem('sazibtv_customer_session', JSON.stringify(currentCustomer));
+          loadCustomerApp();
           return;
         }
+      } catch (err) {}
 
-        currentCustomer = data.customer;
+      // Client-side fallback with window.INITIAL_CUSTOMERS
+      const custs = window.INITIAL_CUSTOMERS || [];
+      const cleanIdent = identifier.toLowerCase();
+      const cleanCode = code.toUpperCase();
+      const found = custs.find(c => 
+        (c.phone.toLowerCase() === cleanIdent || (c.email && c.email.toLowerCase() === cleanIdent)) &&
+        c.code.toUpperCase() === cleanCode
+      );
+
+      if (found) {
+        currentCustomer = found;
         localStorage.setItem('sazibtv_customer_session', JSON.stringify(currentCustomer));
         loadCustomerApp();
-      } catch (err) {
-        showToast('Error contacting server: ' + err.message, 'error');
+        return;
       }
+
+      showToast('Invalid phone/email or activation code', 'error');
     };
 
     function customerLogout() {
@@ -475,22 +489,34 @@
       }
 
       // Fetch Customer Channels
+      let fetched = false;
       try {
         const res = await fetch(`/api/customer/channels?token=${currentCustomer.token}`);
-        const data = await res.json();
-        if (res.ok && data.channels) {
-          customerChannels = data.channels;
-          $('cp-channel-count-tag').textContent = `${customerChannels.length} Channels Available`;
-          buildCategoryTabs();
-          filterCustomerChannels();
-
-          // Auto-play first channel
-          if (customerChannels.length > 0) {
-            playChannel(customerChannels[0]);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.channels && data.channels.length > 0) {
+            customerChannels = data.channels;
+            fetched = true;
           }
         }
-      } catch (err) {
-        showToast('Error loading channels', 'error');
+      } catch (err) {}
+
+      if (!fetched) {
+        const all = window.INITIAL_CHANNELS || [];
+        const allowed = currentCustomer.allowedCategories || ['all'];
+        if (allowed.includes('all')) {
+          customerChannels = all;
+        } else {
+          customerChannels = all.filter(c => allowed.includes(c.category) || allowed.includes(c.group));
+        }
+      }
+
+      $('cp-channel-count-tag').textContent = `${customerChannels.length} Channels Available`;
+      buildCategoryTabs();
+      filterCustomerChannels();
+
+      if (customerChannels.length > 0) {
+        playChannel(customerChannels[0]);
       }
     }
 
