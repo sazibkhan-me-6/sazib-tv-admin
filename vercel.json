@@ -1,9 +1,8 @@
 {
-  "version": 2,
   "cleanUrls": true,
   "rewrites": [
     { "source": "/customer", "destination": "/customer.html" },
-    { "source": "/playlist.m3u", "destination": "/api/playlist" },
-    { "source": "/api/customer/(.*)", "destination": "/api/channels" }
+    { "source": "/api/channels", "destination": "/channels.json" },
+    { "source": "/api/customers", "destination": "/customers.json" }
   ]
 }

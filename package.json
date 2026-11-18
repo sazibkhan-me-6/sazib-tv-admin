@@ -2,7 +2,6 @@
   "name": "sazib-tv-admin",
   "version": "1.0.0",
   "description": "Sazib TV Admin Panel - Complete Channel Management & Stream Testing Dashboard",
-  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
