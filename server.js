@@ -4,9 +4,10 @@ const path = require('path');
 
 const PORT = process.env.PORT || 3000;
 const ROOT_DIR = __dirname;
-const CHANNELS_FILE = path.join(ROOT_DIR, 'channels.json');
+const TMP_DIR = process.env.VERCEL ? '/tmp' : ROOT_DIR;
+const CHANNELS_FILE = path.join(TMP_DIR, 'channels.json');
 const DEFAULT_CHANNELS_FILE = path.join(ROOT_DIR, 'defaultChannels.json');
-const CUSTOMERS_FILE = path.join(ROOT_DIR, 'customers.json');
+const CUSTOMERS_FILE = path.join(TMP_DIR, 'customers.json');
 
 // Path to actual Sazib TV frontend app
 const SAZIB_TV_PATH = path.resolve(ROOT_DIR, '../StreamBoxTV/streambox-android-tv/src/defaultChannels.json');
@@ -51,7 +52,9 @@ function readChannels() {
         webUrl: c.webUrl || '',
         active: c.active !== undefined ? c.active : true
       }));
-      fs.writeFileSync(CHANNELS_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+      try {
+        fs.writeFileSync(CHANNELS_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+      } catch (e) {}
       return normalized;
     } catch (e) {
       console.error('Error reading defaultChannels.json:', e.message);
@@ -74,7 +77,9 @@ function readCustomers() {
 }
 
 function writeCustomers(data) {
-  fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  try {
+    fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {}
 }
 
 function parseJsonBody(req) {
@@ -378,7 +383,9 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ error: 'Expected an array of channels' }));
       }
-      fs.writeFileSync(CHANNELS_FILE, JSON.stringify(channels, null, 2), 'utf8');
+      try {
+        fs.writeFileSync(CHANNELS_FILE, JSON.stringify(channels, null, 2), 'utf8');
+      } catch (e) {}
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ success: true, count: channels.length }));
     } catch (err) {
@@ -392,7 +399,9 @@ const server = http.createServer(async (req, res) => {
       let channels = await parseJsonBody(req);
       if (!Array.isArray(channels)) channels = readChannels();
 
-      fs.writeFileSync(CHANNELS_FILE, JSON.stringify(channels, null, 2), 'utf8');
+      try {
+        fs.writeFileSync(CHANNELS_FILE, JSON.stringify(channels, null, 2), 'utf8');
+      } catch (e) {}
 
       const formatted = channels
         .filter(c => c.active !== false)
@@ -438,7 +447,9 @@ const server = http.createServer(async (req, res) => {
           webUrl: c.webUrl || '',
           active: true
         }));
-        fs.writeFileSync(CHANNELS_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+        try {
+          fs.writeFileSync(CHANNELS_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+        } catch (e) {}
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ success: true, channels: normalized }));
       }
@@ -498,4 +509,10 @@ function startServer(port) {
   });
 }
 
-startServer(PORT);
+if (!process.env.VERCEL && require.main === module) {
+  startServer(PORT);
+}
+
+module.exports = (req, res) => {
+  server.emit('request', req, res);
+};

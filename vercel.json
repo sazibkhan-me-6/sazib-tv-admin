@@ -3,6 +3,7 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/customer", "destination": "/customer.html" },
-    { "source": "/playlist.m3u", "destination": "/api/playlist" }
+    { "source": "/playlist.m3u", "destination": "/api/playlist" },
+    { "source": "/api/customer/(.*)", "destination": "/api/channels" }
   ]
 }
