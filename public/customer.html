@@ -362,8 +362,14 @@
           </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; font-size:13px; color:#94a3b8;">
-          <span>Player: HLS / Adaptive Bitrate</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:14px; font-size:13px; color:#94a3b8;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label for="cp-quality" style="font-size:12px; color:#94a3b8;">Quality:</label>
+            <select id="cp-quality" onchange="setStreamQuality(this.value)" style="background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; padding:5px 10px; font-size:12px; outline:none;">
+              <option value="-1">Auto (Adaptive)</option>
+            </select>
+            <button onclick="reconnectCurrentStream()" style="background:#1e293b; color:#93c5fd; border:1px solid #334155; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer;">🔄 Reconnect</button>
+          </div>
           <a href="https://sazib-tv.vercel.app/" target="_blank" style="color:#60a5fa; text-decoration:none;">Open in TV Mode ↗</a>
         </div>
       </div>
@@ -578,13 +584,31 @@
       `).join('');
     }
 
+    let currentPlayingChannel = null;
+
+    function setStreamQuality(levelIdx) {
+      if (!hls) return;
+      hls.currentLevel = parseInt(levelIdx, 10);
+      showToast(levelIdx == -1 ? 'Quality: Auto (Adaptive)' : 'Stream quality updated!', 'info');
+    }
+
+    function reconnectCurrentStream() {
+      if (currentPlayingChannel) {
+        showToast('Reconnecting stream...', 'info');
+        playChannel(currentPlayingChannel);
+      }
+    }
+
     function playChannel(c) {
+      currentPlayingChannel = c;
       $('now-title').textContent = c.name;
       $('now-category').textContent = `${c.category || c.group} • Live Stream`;
 
       const video = $('cpVideoPlayer');
       const overlay = $('cpPlayerStatus');
       const statusText = $('cpStatusText');
+      const qualitySelect = $('cp-quality');
+      if (qualitySelect) qualitySelect.innerHTML = '<option value="-1">Auto (Adaptive)</option>';
 
       if (platformSettings.masterStreaming === false) {
         if (hls) { hls.destroy(); hls = null; }
@@ -608,12 +632,36 @@
       video.load();
 
       if (window.Hls && Hls.isSupported()) {
-        hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+        let retries = 0;
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          startLevel: -1,
+          capLevelToPlayerSize: true,
+          abrEwmaDefaultEstimate: 500000,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          backBufferLength: 30,
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 6,
+          fragLoadingMaxRetry: 6,
+          manifestLoadingMaxRetry: 4,
+          levelLoadingMaxRetry: 4
+        });
         hls.loadSource(c.url);
         hls.attachMedia(video);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+          retries = 0;
           overlay.style.display = 'none';
+          if (qualitySelect && data.levels && data.levels.length > 1) {
+            let opts = '<option value="-1">Auto (Adaptive)</option>';
+            data.levels.forEach((lvl, i) => {
+              const label = lvl.height ? `${lvl.height}p` : `${Math.round((lvl.bitrate || 0) / 1000)} kbps`;
+              opts += `<option value="${i}">${label}</option>`;
+            });
+            qualitySelect.innerHTML = opts;
+          }
           video.play().catch(() => {
             statusText.textContent = 'Click play to start video';
           });
@@ -621,8 +669,18 @@
 
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
-            statusText.textContent = 'Stream unavailable or blocked by CORS headers.';
-            overlay.style.display = 'flex';
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && retries < 3) {
+              retries++;
+              statusText.textContent = `Buffering recovery (${retries}/3)...`;
+              overlay.style.display = 'flex';
+              hls.startLoad();
+            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && retries < 3) {
+              retries++;
+              hls.recoverMediaError();
+            } else {
+              statusText.textContent = 'Stream temporarily unavailable. Click Reconnect or try another channel.';
+              overlay.style.display = 'flex';
+            }
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {

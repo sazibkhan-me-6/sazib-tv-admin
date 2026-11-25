@@ -3,7 +3,7 @@
  * Complete Channel & Customer Control Suite
  */
 
-const STORAGE_KEY = 'sazibtv_admin_channels_v3';
+const STORAGE_KEY = 'sazibtv_admin_channels_v4';
 const CUST_STORAGE_KEY = 'sazibtv_admin_customers_v2';
 const API_URL = '/api/channels';
 const API_CUST_URL = '/api/customers';
@@ -897,11 +897,27 @@ function loadStream(url) {
   video.load();
 
   if (window.Hls && Hls.isSupported()) {
-    hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true, maxBufferLength: 10 });
+    let retries = 0;
+    hlsInstance = new Hls({
+      enableWorker: true,
+      lowLatencyMode: false,
+      startLevel: -1,
+      capLevelToPlayerSize: true,
+      abrEwmaDefaultEstimate: 500000,
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      backBufferLength: 30,
+      liveSyncDurationCount: 3,
+      liveMaxLatencyDurationCount: 6,
+      fragLoadingMaxRetry: 6,
+      manifestLoadingMaxRetry: 4,
+      levelLoadingMaxRetry: 4
+    });
     hlsInstance.loadSource(url);
     hlsInstance.attachMedia(video);
 
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      retries = 0;
       overlay.style.display = 'none';
       video.play().catch(() => {
         statusText.textContent = 'Autoplay prevented. Click Play on video.';
@@ -911,8 +927,18 @@ function loadStream(url) {
 
     hlsInstance.on(Hls.Events.ERROR, (event, data) => {
       if (data.fatal) {
-        statusText.textContent = 'Stream unavailable or CORS blocked.';
-        overlay.style.display = 'flex';
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && retries < 3) {
+          retries++;
+          statusText.textContent = `Reconnecting (${retries}/3)...`;
+          overlay.style.display = 'flex';
+          hlsInstance.startLoad();
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && retries < 3) {
+          retries++;
+          hlsInstance.recoverMediaError();
+        } else {
+          statusText.textContent = 'Stream unavailable or CORS blocked.';
+          overlay.style.display = 'flex';
+        }
       }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
