@@ -3,7 +3,7 @@
  * Complete Channel & Customer Control Suite
  */
 
-const STORAGE_KEY = 'sazibtv_admin_channels_v2';
+const STORAGE_KEY = 'sazibtv_admin_channels_v3';
 const CUST_STORAGE_KEY = 'sazibtv_admin_customers_v2';
 const API_URL = '/api/channels';
 const API_CUST_URL = '/api/customers';
@@ -332,7 +332,7 @@ function renderCustomers() {
         </td>
         <td>
           <span style="font-size:12px; color:#475569; font-weight:500;">
-            ${(c.allowedCategories || ['all']).includes('all') ? 'All Channels (153)' : (c.allowedCategories || []).join(', ')}
+            ${(c.allowedCategories || ['all']).includes('all') ? `All Channels (${channels.length})` : (c.allowedCategories || []).join(', ')}
           </span>
         </td>
         <td>
