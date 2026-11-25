@@ -1,0 +1,11 @@
+{
+  "maintenanceMode": false,
+  "maintenanceMessage": "Sazib TV is under scheduled maintenance. We will be back shortly!",
+  "masterStreaming": true,
+  "showDemoAccounts": true,
+  "announcementEnabled": false,
+  "announcementText": "",
+  "supportContact": "WhatsApp: +8801711-000000",
+  "adminPanelUrl": "https://sazib-tv-admin.vercel.app/",
+  "updatedAt": "2026-11-25T19:22:00.000Z"
+}

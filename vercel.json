@@ -3,9 +3,19 @@
   "buildCommand": "",
   "outputDirectory": "public",
   "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/(channels|site-control|customers).json",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/customer", "destination": "/customer.html" },
     { "source": "/api/channels", "destination": "/channels.json" },
-    { "source": "/api/customers", "destination": "/customers.json" }
+    { "source": "/api/customers", "destination": "/customers.json" },
+    { "source": "/api/site-control", "destination": "/site-control.json" }
   ]
 }

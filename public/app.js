@@ -1245,6 +1245,77 @@ function applySettingsToUI() {
   if ($('ctrl-announce-on')) $('ctrl-announce-on').checked = !!adminSettings.announcementEnabled;
   if ($('ctrl-announce-text')) $('ctrl-announce-text').value = adminSettings.announcementText || '';
   if ($('ctrl-support-contact')) $('ctrl-support-contact').value = adminSettings.supportContact || '';
+  if ($('ctrl-gh-token')) $('ctrl-gh-token').value = localStorage.getItem('sazibtv_gh_publish_token') || '';
+}
+
+function saveGithubToken() {
+  const tok = $('ctrl-gh-token') ? $('ctrl-gh-token').value.trim() : '';
+  if (tok) {
+    localStorage.setItem('sazibtv_gh_publish_token', tok);
+    showToast('GitHub Publish Token saved in this browser', 'info');
+  } else {
+    localStorage.removeItem('sazibtv_gh_publish_token');
+  }
+}
+
+async function githubUpdateFile(token, repoPath, jsonObj, commitMessage) {
+  const apiUrl = `https://api.github.com/repos/sazibkhan-me-6/sazib-tv-admin/contents/${repoPath}`;
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json'
+  };
+  let sha = undefined;
+  const getRes = await fetch(apiUrl, { headers });
+  if (getRes.ok) {
+    const existing = await getRes.json();
+    sha = existing.sha;
+  }
+  const contentStr = JSON.stringify(jsonObj, null, 2);
+  const b64 = btoa(unescape(encodeURIComponent(contentStr)));
+  const putRes = await fetch(apiUrl, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ message: commitMessage, content: b64, sha, branch: 'main' })
+  });
+  if (!putRes.ok) {
+    const err = await putRes.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub HTTP ${putRes.status}`);
+  }
+  return putRes.json();
+}
+
+async function publishLiveToSazibTv() {
+  await saveAdminSettings(false);
+  const statusEl = $('publish-live-status');
+  const token = ($('ctrl-gh-token') ? $('ctrl-gh-token').value.trim() : '') || localStorage.getItem('sazibtv_gh_publish_token') || '';
+
+  if (token) {
+    localStorage.setItem('sazibtv_gh_publish_token', token);
+    if (statusEl) statusEl.textContent = '⏳ Publishing live settings & channels to sazib-tv.vercel.app...';
+    showToast('Publishing live changes to sazib-tv.vercel.app...', 'info');
+    try {
+      await githubUpdateFile(token, 'public/site-control.json', adminSettings, 'chore(admin): live update site-control settings');
+      await githubUpdateFile(token, 'public/channels.json', channels, `chore(admin): live update ${channels.length} channels`);
+      if (statusEl) statusEl.innerHTML = '✅ <strong>Published Live!</strong> <code>sazib-tv.vercel.app</code> will reflect changes within ~15 seconds.';
+      logAdminAction('LIVE_PUBLISH', `Published ${channels.length} channels & site controls to sazib-tv.vercel.app`);
+      showToast('Published live to sazib-tv.vercel.app!', 'success');
+      return;
+    } catch (err) {
+      if (statusEl) statusEl.textContent = `❌ Publish failed: ${err.message}`;
+      showToast('Live publish failed: ' + err.message, 'error');
+      return;
+    }
+  }
+
+  if (isServerMode) {
+    await syncWithTvApp();
+    if (statusEl) statusEl.textContent = '✅ Synced locally with Sazib TV source!';
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'ℹ️ Enter a GitHub token above to push live from Vercel, or run locally.';
+  showToast('Paste your GitHub token in Live Publish to push changes directly to sazib-tv.vercel.app', 'info');
 }
 
 async function saveAdminSettings(showSuccessToast = false) {

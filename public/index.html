@@ -434,6 +434,21 @@
             <button type="submit" class="primary" style="margin-top: 8px;">🔑 Update Password</button>
           </form>
         </div>
+
+        <!-- Live Cloud Publish to sazib-tv.vercel.app -->
+        <div class="ac-card">
+          <h3>🚀 Live Publish to sazib-tv.vercel.app</h3>
+          <p class="ac-desc">Push channel edits, Maintenance Mode, Announcements, and Streaming switches directly to <strong>sazib-tv.vercel.app</strong>.</p>
+          <div class="ac-input-group">
+            <label>GitHub Publish Token (Stored locally in your browser only)</label>
+            <input id="ctrl-gh-token" type="password" placeholder="ghp_xxxxxxxxxxxx (Optional for cloud publish)" onblur="saveGithubToken()">
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+            <button class="primary" onclick="publishLiveToSazibTv()">🚀 Publish Live Now</button>
+            <a class="btn btn-outline" href="https://sazib-tv.vercel.app/" target="_blank" style="text-decoration:none;">Open Live TV ↗</a>
+          </div>
+          <small id="publish-live-status" style="display:block; margin-top:8px; color:#64748b; font-size:12px;">Connected target: <code>https://sazib-tv.vercel.app/</code></small>
+        </div>
       </div>
 
       <!-- Sub-Admin & Role Management -->
