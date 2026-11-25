@@ -1,5 +1,35 @@
 [
   {
+    "id": "doc-natgeo-tv",
+    "name": "National Geographic",
+    "url": "https://tvsen6.aynaott.com/natgeo/tracks-v1a1/mono.ts.m3u8",
+    "category": "Documentary",
+    "group": "Documentary",
+    "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Natgeologo.svg/512px-Natgeologo.svg.png",
+    "webUrl": "https://www.nationalgeographic.com/tv/",
+    "active": true
+  },
+  {
+    "id": "sports-tsports-hd",
+    "name": "T Sports HD",
+    "url": "https://live.tsports.com/mobile_hls/tsports_live_1/playlist.m3u8",
+    "category": "Sports",
+    "group": "Sports",
+    "logo": "https://image.tsports.com/images/mobile_thumbnail/1759314297-Promo-thum-1280.jpg",
+    "webUrl": "https://www.tsports.com/live",
+    "active": true
+  },
+  {
+    "id": "bd-independent-tv",
+    "name": "Independent TV",
+    "url": "https://tvsen6.aynaott.com/Wef2Vj67njeYGDqQNFB9/tracks-v1a1/mono.ts.m3u8",
+    "category": "Bangladesh",
+    "group": "Bangladesh",
+    "logo": "https://raw.githubusercontent.com/saeidrahmanbd/BDIX-IPTV/main/logos/independent-tv.png",
+    "webUrl": "https://www.youtube.com/@IndependentTelevision/live",
+    "active": true
+  },
+  {
     "id": "bd-0-somoytv",
     "name": "Somoy TV",
     "url": "https://tvsen6.aynaott.com/4XcqdovJzbbC9WdJA9gk/index.m3u8",
@@ -92,11 +122,11 @@
   {
     "id": "bd-12-deeptotv",
     "name": "Deepto TV",
-    "url": "https://tvsen5.aynaott.com/tK2BNdfsdfsdf/index.m3u8",
+    "url": "https://byphdgllyk.gpcdn.net/hls/deeptotv/index.m3u8",
     "category": "Bangladesh",
     "group": "Bangladesh",
     "logo": "https://raw.githubusercontent.com/saeidrahmanbd/BDIX-IPTV/main/logos/deepto-tv.png",
-    "webUrl": "",
+    "webUrl": "https://www.youtube.com/@DeeptoTVLive/live",
     "active": true
   },
   {
@@ -1582,11 +1612,11 @@
   {
     "id": "bangladesh-TSportsbdSD",
     "name": "T Sports",
-    "url": "https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8",
-    "category": "Bangladesh",
-    "group": "Bangladesh",
-    "logo": "https://i.imgur.com/2JzlorD.png",
-    "webUrl": "",
+    "url": "https://live.tsports.com/mobile_hls/tsports_live_1/playlist.m3u8",
+    "category": "Sports",
+    "group": "Sports",
+    "logo": "https://image.tsports.com/images/mobile_thumbnail/1759314297-Promo-thum-1280.jpg",
+    "webUrl": "https://www.tsports.com/live",
     "active": true
   },
   {
