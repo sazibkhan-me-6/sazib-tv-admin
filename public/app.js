@@ -1087,8 +1087,404 @@ window.addEventListener('keydown', e => {
     closePlayerModal();
     closeCustomerModal();
     closeRenewModal();
+    if (typeof closeAddAdminModal === 'function') closeAddAdminModal();
   }
 });
 
+// ==========================================
+// ADMIN CONTROL SYSTEM (AUTH, ROLES, MASTER SWITCHES, AUDIT LOGS)
+// ==========================================
+const ADMIN_USERS_KEY = 'sazibtv_admin_users_v1';
+const ADMIN_SESSION_KEY = 'sazibtv_admin_session_v1';
+const ADMIN_SETTINGS_KEY = 'sazibtv_admin_settings_v1';
+const ADMIN_LOGS_KEY = 'sazibtv_admin_logs_v1';
+
+const DEFAULT_ADMINS = [
+  {
+    id: 'adm-super-1',
+    name: 'Sazib Khan',
+    username: 'admin',
+    password: 'sazib2026',
+    role: 'Super Admin',
+    status: 'active',
+    isPrimary: true
+  }
+];
+
+const DEFAULT_ADMIN_SETTINGS = {
+  maintenanceMode: false,
+  maintenanceMessage: 'System is under scheduled maintenance. We will be back shortly!',
+  masterStreaming: true,
+  showDemoAccounts: true,
+  announcementEnabled: false,
+  announcementText: '',
+  supportContact: 'WhatsApp: +8801711-000000'
+};
+
+let adminUsers = [];
+let currentAdmin = null;
+let adminSettings = { ...DEFAULT_ADMIN_SETTINGS };
+let auditLogs = [];
+
+function loadAdminUsers() {
+  try {
+    const raw = localStorage.getItem(ADMIN_USERS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(DEFAULT_ADMINS));
+  return JSON.parse(JSON.stringify(DEFAULT_ADMINS));
+}
+
+function saveAdminUsers() {
+  localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(adminUsers));
+  renderAdminUsers();
+}
+
+function loadAdminSettings() {
+  try {
+    const raw = localStorage.getItem(ADMIN_SETTINGS_KEY);
+    if (raw) {
+      return { ...DEFAULT_ADMIN_SETTINGS, ...JSON.parse(raw) };
+    }
+  } catch (e) {}
+  return { ...DEFAULT_ADMIN_SETTINGS };
+}
+
+function loadAuditLogs() {
+  try {
+    const raw = localStorage.getItem(ADMIN_LOGS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [];
+}
+
+function logAdminAction(action, details) {
+  const entry = {
+    time: new Date().toLocaleString(),
+    admin: currentAdmin ? currentAdmin.username : 'system',
+    action,
+    details
+  };
+  auditLogs.unshift(entry);
+  if (auditLogs.length > 100) auditLogs = auditLogs.slice(0, 100);
+  localStorage.setItem(ADMIN_LOGS_KEY, JSON.stringify(auditLogs));
+  renderAuditLogs();
+}
+
+function fillDefaultAdminLogin() {
+  const u = $('admin-login-user');
+  const p = $('admin-login-pass');
+  if (u) u.value = 'admin';
+  if (p) p.value = 'sazib2026';
+}
+
+function showAdminGate() {
+  const screen = $('admin-login-screen');
+  if (screen) screen.classList.remove('hidden');
+}
+
+function hideAdminGate() {
+  const screen = $('admin-login-screen');
+  if (screen) screen.classList.add('hidden');
+}
+
+function updateSidebarAdminProfile() {
+  if (!currentAdmin) return;
+  const nameEl = $('current-admin-name');
+  const roleEl = $('current-admin-role');
+  if (nameEl) nameEl.textContent = currentAdmin.name;
+  if (roleEl) roleEl.textContent = currentAdmin.role;
+}
+
+function adminLogout() {
+  logAdminAction('LOGOUT', `Admin "${currentAdmin?.username || 'admin'}" signed out`);
+  currentAdmin = null;
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  showAdminGate();
+  showToast('Admin Panel locked safely', 'info');
+}
+
+function applySettingsToUI() {
+  if ($('ctrl-maintenance')) $('ctrl-maintenance').checked = !!adminSettings.maintenanceMode;
+  if ($('ctrl-streaming')) $('ctrl-streaming').checked = adminSettings.masterStreaming !== false;
+  if ($('ctrl-demo-mode')) $('ctrl-demo-mode').checked = adminSettings.showDemoAccounts !== false;
+  if ($('ctrl-maintenance-msg')) $('ctrl-maintenance-msg').value = adminSettings.maintenanceMessage || '';
+  if ($('ctrl-announce-on')) $('ctrl-announce-on').checked = !!adminSettings.announcementEnabled;
+  if ($('ctrl-announce-text')) $('ctrl-announce-text').value = adminSettings.announcementText || '';
+  if ($('ctrl-support-contact')) $('ctrl-support-contact').value = adminSettings.supportContact || '';
+}
+
+async function saveAdminSettings(showSuccessToast = false) {
+  adminSettings = {
+    maintenanceMode: $('ctrl-maintenance') ? $('ctrl-maintenance').checked : false,
+    masterStreaming: $('ctrl-streaming') ? $('ctrl-streaming').checked : true,
+    showDemoAccounts: $('ctrl-demo-mode') ? $('ctrl-demo-mode').checked : true,
+    maintenanceMessage: $('ctrl-maintenance-msg') ? $('ctrl-maintenance-msg').value.trim() : '',
+    announcementEnabled: $('ctrl-announce-on') ? $('ctrl-announce-on').checked : false,
+    announcementText: $('ctrl-announce-text') ? $('ctrl-announce-text').value.trim() : '',
+    supportContact: $('ctrl-support-contact') ? $('ctrl-support-contact').value.trim() : '',
+    updatedAt: new Date().toISOString()
+  };
+
+  localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(adminSettings));
+
+  if (isServerMode) {
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(adminSettings)
+      });
+    } catch (e) {}
+  }
+
+  logAdminAction(
+    'SETTINGS_UPDATED',
+    `Maintenance: ${adminSettings.maintenanceMode ? 'ON' : 'OFF'}, Streaming: ${adminSettings.masterStreaming ? 'ON' : 'OFF'}, Announcement: ${adminSettings.announcementEnabled ? 'ON' : 'OFF'}`
+  );
+  showToast(showSuccessToast ? 'Settings saved & broadcast to Customer Portal!' : 'Platform control updated!', 'success');
+}
+
+function bulkSetChannelsStatus(active) {
+  const label = active ? 'enable' : 'disable';
+  if (!confirm(`Are you sure you want to ${label} ALL ${channels.length} channels?`)) return;
+  channels.forEach(c => { c.active = active; });
+  persistChannels(true);
+  logAdminAction('BULK_CHANNELS', `${active ? 'Enabled' : 'Disabled'} all ${channels.length} channels`);
+  showToast(`All ${channels.length} channels ${active ? 'enabled' : 'disabled'}!`, 'success');
+}
+
+function renderAdminUsers() {
+  const tbody = $('admin-users-rows');
+  if (!tbody) return;
+  tbody.innerHTML = adminUsers.map(u => {
+    const roleClass = u.role === 'Super Admin' ? 'role-super' : u.role === 'Channel Manager' ? 'role-manager' : 'role-support';
+    const isActive = u.status !== 'suspended';
+    const isSelf = currentAdmin && currentAdmin.id === u.id;
+    return `
+      <tr>
+        <td><strong>${esc(u.name)}</strong> ${isSelf ? '<small style="color:#2563eb;">(You)</small>' : ''}</td>
+        <td><span class="cust-code-badge">${esc(u.username)}</span></td>
+        <td><span class="role-badge ${roleClass}">${esc(u.role)}</span></td>
+        <td>
+          <span class="status ${isActive ? '' : 'off'}" ${u.isPrimary ? '' : `onclick="toggleAdminUserStatus('${u.id}')"`}>
+            ${isActive ? '🟢 Active' : '⚪ Suspended'}
+          </span>
+        </td>
+        <td>
+          <div class="actions">
+            ${u.isPrimary
+              ? '<span style="font-size:12px; color:#64748b;">Primary Protected</span>'
+              : `<button onclick="toggleAdminUserStatus('${u.id}')">${isActive ? '🔒 Suspend' : '🔓 Activate'}</button>
+                 <button class="btn-del" onclick="deleteAdminUser('${u.id}')">🗑️</button>`
+            }
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openAddAdminModal() {
+  const form = $('addAdminForm');
+  if (form) form.reset();
+  if ($('addAdminModal')) $('addAdminModal').classList.add('show');
+}
+
+function closeAddAdminModal() {
+  if ($('addAdminModal')) $('addAdminModal').classList.remove('show');
+}
+
+function toggleAdminUserStatus(id) {
+  const u = adminUsers.find(x => x.id === id);
+  if (!u || u.isPrimary) return;
+  u.status = u.status === 'suspended' ? 'active' : 'suspended';
+  saveAdminUsers();
+  logAdminAction('ADMIN_STATUS', `${u.username} set to ${u.status}`);
+  showToast(`Admin "${u.username}" is now ${u.status}`, 'info');
+}
+
+function deleteAdminUser(id) {
+  const u = adminUsers.find(x => x.id === id);
+  if (!u || u.isPrimary) return;
+  if (!confirm(`Delete admin account "${u.name}" (${u.username})?`)) return;
+  adminUsers = adminUsers.filter(x => x.id !== id);
+  saveAdminUsers();
+  logAdminAction('ADMIN_DELETED', `Deleted staff admin "${u.username}"`);
+  showToast(`Removed admin "${u.username}"`, 'info');
+}
+
+function renderAuditLogs() {
+  const tbody = $('audit-log-rows');
+  if (!tbody) return;
+  if (auditLogs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#64748b; padding:18px;">No activity logs recorded yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = auditLogs.map(l => `
+    <tr>
+      <td style="font-size:12px; color:#64748b;">${esc(l.time)}</td>
+      <td><strong>${esc(l.admin)}</strong></td>
+      <td><span class="log-action-badge">${esc(l.action)}</span></td>
+      <td style="font-size:13px; color:#334155;">${esc(l.details)}</td>
+    </tr>
+  `).join('');
+}
+
+function clearAuditLogs() {
+  if (!confirm('Clear all admin activity audit logs?')) return;
+  auditLogs = [];
+  localStorage.setItem(ADMIN_LOGS_KEY, '[]');
+  renderAuditLogs();
+  showToast('Audit logs cleared', 'info');
+}
+
+function exportAuditLogs() {
+  const blob = new Blob([JSON.stringify(auditLogs, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `sazibtv-audit-logs-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Exported admin audit logs!', 'success');
+}
+
+function initAdminControl() {
+  adminUsers = loadAdminUsers();
+  adminSettings = loadAdminSettings();
+  auditLogs = loadAuditLogs();
+
+  // Check existing session
+  const savedSession = localStorage.getItem(ADMIN_SESSION_KEY) || sessionStorage.getItem(ADMIN_SESSION_KEY);
+  if (savedSession) {
+    try {
+      const parsed = JSON.parse(savedSession);
+      const valid = adminUsers.find(u => u.id === parsed.id && u.status !== 'suspended');
+      if (valid) {
+        currentAdmin = valid;
+        hideAdminGate();
+        updateSidebarAdminProfile();
+      } else {
+        showAdminGate();
+      }
+    } catch (e) {
+      showAdminGate();
+    }
+  } else {
+    showAdminGate();
+  }
+
+  // Bind Admin Login Form
+  const loginForm = $('admin-login-form');
+  if (loginForm) {
+    loginForm.onsubmit = e => {
+      e.preventDefault();
+      const username = $('admin-login-user').value.trim().toLowerCase();
+      const password = $('admin-login-pass').value;
+      const remember = $('admin-login-remember').checked;
+      const errBox = $('admin-login-error');
+
+      const matched = adminUsers.find(u => u.username.toLowerCase() === username && u.password === password);
+      if (!matched) {
+        errBox.textContent = 'Invalid username or password. Please try again.';
+        errBox.hidden = false;
+        return;
+      }
+      if (matched.status === 'suspended') {
+        errBox.textContent = 'This admin account is suspended by Super Admin.';
+        errBox.hidden = false;
+        return;
+      }
+
+      errBox.hidden = true;
+      currentAdmin = matched;
+      const payload = JSON.stringify({ id: matched.id, username: matched.username });
+      if (remember) localStorage.setItem(ADMIN_SESSION_KEY, payload);
+      else sessionStorage.setItem(ADMIN_SESSION_KEY, payload);
+
+      hideAdminGate();
+      updateSidebarAdminProfile();
+      logAdminAction('LOGIN', `Signed in as ${matched.username} (${matched.role})`);
+      showToast(`Welcome back, ${matched.name}!`, 'success');
+    };
+  }
+
+  // Bind Change Password Form
+  const pwForm = $('change-password-form');
+  if (pwForm) {
+    pwForm.onsubmit = e => {
+      e.preventDefault();
+      if (!currentAdmin) return;
+      const oldPw = $('sec-old-pass').value;
+      const newPw = $('sec-new-pass').value;
+      const confirmPw = $('sec-confirm-pass').value;
+
+      if (oldPw !== currentAdmin.password) {
+        showToast('Current password is incorrect!', 'error');
+        return;
+      }
+      if (newPw !== confirmPw) {
+        showToast('New passwords do not match!', 'error');
+        return;
+      }
+
+      const idx = adminUsers.findIndex(u => u.id === currentAdmin.id);
+      if (idx !== -1) {
+        adminUsers[idx].password = newPw;
+        currentAdmin.password = newPw;
+        saveAdminUsers();
+        pwForm.reset();
+        logAdminAction('PASSWORD_CHANGED', `Updated password for ${currentAdmin.username}`);
+        showToast('Admin password updated successfully!', 'success');
+      }
+    };
+  }
+
+  // Bind Add Sub-Admin Form
+  const addAdminForm = $('addAdminForm');
+  if (addAdminForm) {
+    addAdminForm.onsubmit = e => {
+      e.preventDefault();
+      const name = $('new-admin-name').value.trim();
+      const username = $('new-admin-username').value.trim().toLowerCase();
+      const password = $('new-admin-password').value;
+      const role = $('new-admin-role').value;
+
+      if (adminUsers.some(u => u.username.toLowerCase() === username)) {
+        showToast('Username already exists!', 'error');
+        return;
+      }
+
+      adminUsers.push({
+        id: `adm-${Date.now()}`,
+        name,
+        username,
+        password,
+        role,
+        status: 'active',
+        isPrimary: false
+      });
+      saveAdminUsers();
+      closeAddAdminModal();
+      logAdminAction('ADMIN_CREATED', `Created ${role} account "${username}"`);
+      showToast(`Added ${role}: ${name}`, 'success');
+    };
+  }
+
+  applySettingsToUI();
+  renderAdminUsers();
+  renderAuditLogs();
+}
+
 // Boot Application
-window.addEventListener('DOMContentLoaded', initApp);
+window.addEventListener('DOMContentLoaded', () => {
+  initAdminControl();
+  initApp();
+});

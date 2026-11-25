@@ -271,6 +271,21 @@
     </div>
   </nav>
 
+  <!-- Live Admin Announcement Bar -->
+  <div id="cp-announcement-bar" style="display:none; background:linear-gradient(90deg, #b91c1c, #e50914); color:#fff; padding:10px 20px; text-align:center; font-size:13px; font-weight:600;">
+    <span id="cp-announcement-text"></span>
+  </div>
+
+  <!-- Maintenance Mode Screen (Controlled by Admin) -->
+  <div id="cp-maintenance-overlay" style="display:none; min-height:80vh; place-items:center; padding:24px; text-align:center;">
+    <div style="background:#0f172a; border:1px solid #334155; border-radius:18px; padding:40px 30px; max-width:480px;">
+      <div style="font-size:46px; margin-bottom:12px;">🛠️</div>
+      <h2 style="color:#fff; margin:0 0 10px;">Under Maintenance</h2>
+      <p id="cp-maintenance-text" style="color:#94a3b8; font-size:14px; line-height:1.6; margin:0 0 18px;">System is currently under maintenance. Please check back soon.</p>
+      <div id="cp-maintenance-contact" style="color:#60a5fa; font-size:13px; font-weight:600;"></div>
+    </div>
+  </div>
+
   <!-- Login View -->
   <div id="cp-login-view" class="login-container">
     <div class="login-box">
@@ -571,6 +586,15 @@
       const overlay = $('cpPlayerStatus');
       const statusText = $('cpStatusText');
 
+      if (platformSettings.masterStreaming === false) {
+        if (hls) { hls.destroy(); hls = null; }
+        video.pause();
+        video.removeAttribute('src');
+        overlay.style.display = 'flex';
+        statusText.textContent = '⏸️ Live streaming is temporarily paused by Admin.';
+        return;
+      }
+
       overlay.style.display = 'flex';
       statusText.textContent = `Connecting to ${c.name}...`;
 
@@ -618,8 +642,64 @@
       });
     }
 
+    let platformSettings = {
+      maintenanceMode: false,
+      masterStreaming: true,
+      showDemoAccounts: true,
+      announcementEnabled: false,
+      announcementText: '',
+      maintenanceMessage: '',
+      supportContact: ''
+    };
+
+    function applyAdminPlatformControls() {
+      try {
+        const raw = localStorage.getItem('sazibtv_admin_settings_v1');
+        if (raw) platformSettings = { ...platformSettings, ...JSON.parse(raw) };
+      } catch (e) {}
+
+      // Announcement bar
+      const bar = $('cp-announcement-bar');
+      if (platformSettings.announcementEnabled && platformSettings.announcementText) {
+        $('cp-announcement-text').textContent = '📢 ' + platformSettings.announcementText;
+        bar.style.display = 'block';
+      } else {
+        bar.style.display = 'none';
+      }
+
+      // Demo accounts visibility
+      const demoBox = document.querySelector('.demo-accounts');
+      if (demoBox) {
+        demoBox.style.display = platformSettings.showDemoAccounts === false ? 'none' : 'block';
+      }
+
+      // Maintenance mode
+      const maintEl = $('cp-maintenance-overlay');
+      if (platformSettings.maintenanceMode) {
+        $('cp-maintenance-text').textContent = platformSettings.maintenanceMessage || 'System is under scheduled maintenance. We will be back shortly!';
+        $('cp-maintenance-contact').textContent = platformSettings.supportContact || '';
+        maintEl.style.display = 'grid';
+        $('cp-login-view').style.display = 'none';
+        $('cp-app-view').style.display = 'none';
+        if (hls) hls.destroy();
+      } else {
+        maintEl.style.display = 'none';
+        if (currentCustomer) {
+          $('cp-app-view').style.display = 'block';
+        } else {
+          $('cp-login-view').style.display = 'grid';
+        }
+      }
+    }
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'sazibtv_admin_settings_v1') applyAdminPlatformControls();
+    });
+
     // Auto-login if session exists
     window.addEventListener('DOMContentLoaded', () => {
+      applyAdminPlatformControls();
+      if (platformSettings.maintenanceMode) return;
       const saved = localStorage.getItem('sazibtv_customer_session');
       if (saved) {
         try {
