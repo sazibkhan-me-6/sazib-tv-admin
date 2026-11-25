@@ -1,4 +1,7 @@
 {
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": "public",
   "cleanUrls": true,
   "rewrites": [
     { "source": "/customer", "destination": "/customer.html" },

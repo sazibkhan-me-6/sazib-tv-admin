@@ -3,14 +3,14 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const ROOT_DIR = __dirname;
+const ROOT_DIR = path.resolve(__dirname, '../public');
 const TMP_DIR = process.env.VERCEL ? '/tmp' : ROOT_DIR;
 const CHANNELS_FILE = path.join(TMP_DIR, 'channels.json');
 const DEFAULT_CHANNELS_FILE = path.join(ROOT_DIR, 'defaultChannels.json');
 const CUSTOMERS_FILE = path.join(TMP_DIR, 'customers.json');
 
 // Path to actual Sazib TV frontend app
-const SAZIB_TV_PATH = path.resolve(ROOT_DIR, '../StreamBoxTV/streambox-android-tv/src/defaultChannels.json');
+const SAZIB_TV_PATH = path.resolve(__dirname, '../../StreamBoxTV/streambox-android-tv/src/defaultChannels.json');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
