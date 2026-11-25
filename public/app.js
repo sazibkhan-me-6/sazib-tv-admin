@@ -3,7 +3,7 @@
  * Complete Channel & Customer Control Suite
  */
 
-const STORAGE_KEY = 'sazibtv_admin_channels_v4';
+const STORAGE_KEY = 'sazibtv_admin_channels_v5';
 const CUST_STORAGE_KEY = 'sazibtv_admin_customers_v2';
 const API_URL = '/api/channels';
 const API_CUST_URL = '/api/customers';
