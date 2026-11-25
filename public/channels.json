@@ -92,7 +92,7 @@
   {
     "id": "bd-12-deeptotv",
     "name": "Deepto TV",
-    "url": "https://byphdgllyk.gpcdn.net/hls/deeptotv/index.m3u8",
+    "url": "https://tvsen5.aynaott.com/tK2BNdfsdfsdf/index.m3u8",
     "category": "Bangladesh",
     "group": "Bangladesh",
     "logo": "https://raw.githubusercontent.com/saeidrahmanbd/BDIX-IPTV/main/logos/deepto-tv.png",
@@ -632,7 +632,7 @@
   {
     "id": "in-0-colorsbangla",
     "name": "Colors Bangla",
-    "url": "https://livetv.shamon-cable.net:8443/Colors-bangla/index.m3u8",
+    "url": "https://catchup.yuppcdn.net/amazonv2/36/preview/colorsbanglahd/master/chunklist.m3u8",
     "category": "Indian TV",
     "group": "Indian TV",
     "logo": "https://raw.githubusercontent.com/saeidrahmanbd/BDIX-IPTV/main/logos/colors-bangla-hd.png",
@@ -642,7 +642,7 @@
   {
     "id": "in-1-jalshamovies",
     "name": "Jalsha Movies",
-    "url": "https://livetv.shamon-cable.net:8443/Jalsha-Movies/index.m3u8",
+    "url": "https://box.bbaria.net:8083/Jalsha_Movie/index.m3u8",
     "category": "Indian TV",
     "group": "Indian TV",
     "logo": "https://raw.githubusercontent.com/saeidrahmanbd/BDIX-IPTV/main/logos/jalsha-movies.png",
@@ -762,7 +762,7 @@
   {
     "id": "in-16-colors",
     "name": "Colors",
-    "url": "https://livetv.shamon-cable.net:8443/Colors-bangla/index.m3u8",
+    "url": "https://catchup.yuppcdn.net/amazonv2/36/preview/colorsbanglahd/master/chunklist.m3u8",
     "category": "Indian TV",
     "group": "Indian TV",
     "logo": "https://raw.githubusercontent.com/saeidrahmanbd/BDIX-IPTV/main/logos/colors-bangla-hd.png",
@@ -1172,7 +1172,7 @@
   {
     "id": "in-59-colorsbanglacin",
     "name": "Colors Bangla Cinema",
-    "url": "https://livetv.shamon-cable.net:8443/Colors-bangla-cinema/index.m3u8",
+    "url": "https://catchup.yuppcdn.net/amazonv2/36/preview/colorsbanglahd/master/chunklist.m3u8",
     "category": "Indian TV",
     "group": "Indian TV",
     "logo": "https://raw.githubusercontent.com/saeidrahmanbd/BDIX-IPTV/main/logos/colors-bangla-cinema.png",
