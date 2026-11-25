@@ -1652,6 +1652,12 @@ window.addEventListener('DOMContentLoaded', () => {
   initAdminControl();
   initApp().then(() => {
     syncLiveSignupsFromMainSite(true);
-    setInterval(() => syncLiveSignupsFromMainSite(true), 15000);
+    setInterval(() => syncLiveSignupsFromMainSite(true), 5000);
   });
+});
+
+// Immediately sync new signups whenever Admin returns to this tab
+window.addEventListener('focus', () => syncLiveSignupsFromMainSite(true));
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) syncLiveSignupsFromMainSite(true);
 });
