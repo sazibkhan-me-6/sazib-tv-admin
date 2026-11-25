@@ -317,7 +317,9 @@ function renderCustomers() {
             <div class="cust-avatar">${initial}</div>
             <div>
               <strong style="display:block; color:#0f172a;">${esc(c.name)}</strong>
-              <small style="color:#64748b;">${c.email ? esc(c.email) : 'No email'}</small>
+              <small style="color:#64748b; display:block;">${c.email ? esc(c.email) : 'No email'}</small>
+              ${c.address ? `<small style="color:#475569; display:block; font-size:11px;">📍 ${esc(c.address)}</small>` : ''}
+              ${c.nid ? `<small style="color:#0369a1; display:block; font-size:11px; font-family:monospace;">🪪 NID: ${esc(c.nid)}</small>` : ''}
             </div>
           </div>
         </td>
@@ -1586,8 +1588,70 @@ function initAdminControl() {
   renderAuditLogs();
 }
 
+// Auto-Sync New Customer Signups from Main Sazib TV Site (https://sazib-tv.vercel.app/api/customers)
+async function syncLiveSignupsFromMainSite(silent = true) {
+  let addedCount = 0;
+  const sources = [
+    `https://sazib-tv.vercel.app/api/customers?t=${Date.now()}`,
+    `/customers.json?t=${Date.now()}`
+  ];
+
+  for (const url of sources) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const list = await res.json();
+      if (!Array.isArray(list)) continue;
+
+      for (const item of list) {
+        if (!item || (!item.phone && !item.email)) continue;
+        const exists = customers.some(c =>
+          c.id === item.id ||
+          (item.phone && c.phone && String(c.phone).trim() === String(item.phone).trim()) ||
+          (item.email && c.email && String(c.email).toLowerCase() === String(item.email).toLowerCase())
+        );
+        if (!exists) {
+          customers.unshift({
+            id: item.id || `cust-${Date.now()}`,
+            name: item.name || 'New Subscriber',
+            phone: item.phone || '',
+            email: item.email || '',
+            address: item.address || '',
+            nid: item.nid || '',
+            code: item.code || item.activationCode || `SZB-${Math.floor(100000 + Math.random() * 900000)}`,
+            token: item.token || `tok_${Date.now()}`,
+            plan: item.plan || 'Free',
+            allowedCategories: item.allowedCategories || ['all'],
+            status: item.status || 'active',
+            expiresAt: item.expiresAt || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+            deviceLimit: item.deviceLimit || 2,
+            activeDevices: item.activeDevices || 1,
+            createdAt: item.createdAt || new Date().toISOString().split('T')[0],
+            notes: item.notes || 'Signed up via sazib-tv.vercel.app'
+          });
+          addedCount++;
+        }
+      }
+    } catch {}
+  }
+
+  if (addedCount > 0) {
+    saveToLocalStorage(CUST_STORAGE_KEY, customers);
+    renderCustomers();
+    if (typeof logAdminAction === 'function') {
+      logAdminAction('NEW_SIGNUP_SYNC', `Auto-synced ${addedCount} new customer(s) from sazib-tv.vercel.app`);
+    }
+    showToast(`🎉 ${addedCount} new customer signup(s) synced automatically!`, 'success');
+  } else if (!silent) {
+    showToast('Customer list is already up to date!', 'info');
+  }
+}
+
 // Boot Application
 window.addEventListener('DOMContentLoaded', () => {
   initAdminControl();
-  initApp();
+  initApp().then(() => {
+    syncLiveSignupsFromMainSite(true);
+    setInterval(() => syncLiveSignupsFromMainSite(true), 15000);
+  });
 });
