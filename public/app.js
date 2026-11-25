@@ -392,6 +392,8 @@ function openCustomerModal(c = null) {
   $('cust-name').value = c?.name || '';
   $('cust-phone').value = c?.phone || '';
   $('cust-email').value = c?.email || '';
+  if ($('cust-address')) $('cust-address').value = c?.address || '';
+  if ($('cust-nid')) $('cust-nid').value = c?.nid || '';
   $('cust-plan').value = c?.plan || 'VIP';
   $('cust-devices').value = c?.deviceLimit || 2;
   $('cust-status').value = c?.status || 'active';
@@ -489,6 +491,8 @@ $('custForm').onsubmit = e => {
   const name = $('cust-name').value.trim();
   const phone = $('cust-phone').value.trim();
   const email = $('cust-email').value.trim();
+  const address = $('cust-address') ? $('cust-address').value.trim() : '';
+  const nid = $('cust-nid') ? $('cust-nid').value.trim() : '';
   const plan = $('cust-plan').value;
   const deviceLimit = parseInt($('cust-devices').value, 10);
   const expiresAt = $('cust-expiry').value;
@@ -506,6 +510,8 @@ $('custForm').onsubmit = e => {
     name,
     phone,
     email,
+    address,
+    nid,
     plan,
     allowedCategories,
     status,
