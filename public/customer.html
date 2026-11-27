@@ -331,15 +331,24 @@
     </div>
 
     <!-- Active Subscription Status Banner -->
-    <div id="cp-active-banner" style="background:#132034; border:1px solid #1e3a5f; padding:14px 20px; border-radius:12px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div id="cp-active-banner" style="background:#132034; border:1px solid #1e3a5f; padding:14px 20px; border-radius:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
       <div>
         <span style="color:#60a5fa; font-weight:600; font-size:13px;">ACTIVE SUBSCRIPTION:</span>
         <strong id="cp-banner-plan" style="color:#fff; margin-left:6px; font-size:15px;">VIP Plan</strong>
         <span style="color:#94a3b8; font-size:13px; margin-left:10px;">• Valid until: <span id="cp-banner-expiry" style="color:#34d399; font-weight:600;">2027-11-18</span></span>
       </div>
       <div>
-        <span id="cp-channel-count-tag" class="badge" style="background:#1e293b; color:#93c5fd; padding:6px 12px; border-radius:20px;">153 Channels Available</span>
+        <span id="cp-channel-count-tag" class="badge" style="background:#1e293b; color:#93c5fd; padding:6px 12px; border-radius:20px;">308 Channels Available</span>
       </div>
+    </div>
+
+    <!-- Synced Customer Profile Details Bar -->
+    <div id="cp-profile-details" style="background:#0f172a; border:1px solid #1e293b; padding:12px 18px; border-radius:12px; margin-bottom:20px; display:flex; flex-wrap:wrap; gap:16px; font-size:13px; color:#cbd5e1;">
+      <span>📱 <strong id="cp-prof-phone">-</strong></span>
+      <span>📧 <span id="cp-prof-email">-</span></span>
+      <span>🔑 Code: <code id="cp-prof-code" style="background:#1e293b; color:#38bdf8; padding:2px 8px; border-radius:6px; font-weight:700;">-</code></span>
+      <span id="cp-prof-address-wrap" style="display:none;">📍 <span id="cp-prof-address"></span></span>
+      <span id="cp-prof-nid-wrap" style="display:none;">🪪 NID: <span id="cp-prof-nid" style="font-family:monospace; color:#93c5fd;"></span></span>
     </div>
 
     <!-- Live Stream Player & Channel List -->
@@ -432,6 +441,39 @@
       $('cp-login-form').requestSubmit();
     }
 
+    // Fetch and merge live customers from Main Website Signups + Admin Panel + LocalStorage
+    async function fetchAllLiveCustomers() {
+      const merged = [];
+      const seen = new Set();
+      const addList = (arr) => {
+        if (!Array.isArray(arr)) return;
+        for (const c of arr) {
+          if (!c) continue;
+          const key = (c.phone || c.email || c.id || '').toString().trim().toLowerCase();
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          merged.push(c);
+        }
+      };
+
+      const ts = Date.now();
+      const [mainRes, adminRes] = await Promise.allSettled([
+        fetch(`https://sazib-tv.vercel.app/api/customers?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : []),
+        fetch(`/customers.json?t=${ts}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : [])
+      ]);
+
+      if (mainRes.status === 'fulfilled') addList(mainRes.value);
+      if (adminRes.status === 'fulfilled') addList(adminRes.value);
+
+      try {
+        const localAdmin = JSON.parse(localStorage.getItem('sazibtv_admin_customers_v2') || '[]');
+        addList(localAdmin);
+      } catch {}
+
+      addList(window.INITIAL_CUSTOMERS || []);
+      return merged;
+    }
+
     $('cp-login-form').onsubmit = async e => {
       e.preventDefault();
       const identifier = $('login-identifier').value.trim();
@@ -452,19 +494,26 @@
         }
       } catch (err) {}
 
-      // Client-side fallback with window.INITIAL_CUSTOMERS
-      const custs = window.INITIAL_CUSTOMERS || [];
+      // Live lookup across Main Website Signups (sazib-tv.vercel.app/api/customers) + Admin Panel
+      const custs = await fetchAllLiveCustomers();
       const cleanIdent = identifier.toLowerCase();
       const cleanCode = code.toUpperCase();
-      const found = custs.find(c => 
-        (c.phone.toLowerCase() === cleanIdent || (c.email && c.email.toLowerCase() === cleanIdent)) &&
-        c.code.toUpperCase() === cleanCode
+      const found = custs.find(c =>
+        ((c.phone && String(c.phone).toLowerCase() === cleanIdent) ||
+         (c.email && String(c.email).toLowerCase() === cleanIdent)) &&
+        ((c.code && String(c.code).toUpperCase() === cleanCode) ||
+         (c.activationCode && String(c.activationCode).toUpperCase() === cleanCode))
       );
 
       if (found) {
+        if (found.status === 'blocked') {
+          showToast('Your account has been suspended by Admin.', 'error');
+          return;
+        }
         currentCustomer = found;
         localStorage.setItem('sazibtv_customer_session', JSON.stringify(currentCustomer));
         loadCustomerApp();
+        showToast(`Welcome, ${found.name}!`, 'success');
         return;
       }
 
@@ -481,18 +530,49 @@
     }
 
     async function loadCustomerApp() {
+      // Refresh latest customer record from Main Site / Admin Panel
+      try {
+        const allLatest = await fetchAllLiveCustomers();
+        const latest = allLatest.find(c =>
+          c.id === currentCustomer.id ||
+          (currentCustomer.phone && c.phone === currentCustomer.phone) ||
+          (currentCustomer.email && c.email === currentCustomer.email)
+        );
+        if (latest) {
+          currentCustomer = { ...currentCustomer, ...latest };
+          localStorage.setItem('sazibtv_customer_session', JSON.stringify(currentCustomer));
+        }
+      } catch {}
+
       $('cp-login-view').style.display = 'none';
       $('cp-app-view').style.display = 'block';
       $('cp-user-header').style.display = 'flex';
 
       $('cp-user-name').textContent = currentCustomer.name;
-      $('cp-user-plan').textContent = currentCustomer.plan;
-      $('cp-banner-plan').textContent = currentCustomer.plan + ' Subscription';
+      $('cp-user-plan').textContent = currentCustomer.plan || 'Active';
+      $('cp-banner-plan').textContent = (currentCustomer.plan || 'Active') + ' Subscription';
       $('cp-banner-expiry').textContent = currentCustomer.expiresAt || 'Lifetime';
+
+      // Populate synced customer profile details (Phone, Email, Code, Address, NID)
+      if ($('cp-prof-phone')) $('cp-prof-phone').textContent = currentCustomer.phone || '-';
+      if ($('cp-prof-email')) $('cp-prof-email').textContent = currentCustomer.email || 'No email';
+      if ($('cp-prof-code')) $('cp-prof-code').textContent = currentCustomer.code || currentCustomer.activationCode || '-';
+      if (currentCustomer.address && $('cp-prof-address-wrap')) {
+        $('cp-prof-address').textContent = currentCustomer.address;
+        $('cp-prof-address-wrap').style.display = 'inline';
+      } else if ($('cp-prof-address-wrap')) {
+        $('cp-prof-address-wrap').style.display = 'none';
+      }
+      if (currentCustomer.nid && $('cp-prof-nid-wrap')) {
+        $('cp-prof-nid').textContent = currentCustomer.nid;
+        $('cp-prof-nid-wrap').style.display = 'inline';
+      } else if ($('cp-prof-nid-wrap')) {
+        $('cp-prof-nid-wrap').style.display = 'none';
+      }
 
       // Set M3U Playlist URL
       const origin = window.location.origin;
-      $('cp-m3u-url').value = `${origin}/playlist.m3u?token=${currentCustomer.token}`;
+      $('cp-m3u-url').value = `${origin}/playlist.m3u?token=${currentCustomer.token || currentCustomer.code}`;
 
       // Check Expiration
       const today = new Date().toISOString().split('T')[0];
